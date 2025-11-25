@@ -1,29 +1,19 @@
 ✅ Description complète pour GitHub
 📌 Présentation du projet
-
 Ce projet vise à analyser les enjeux liés au changement climatique à l’échelle internationale. Il s’inscrit dans le cadre de la SAÉ “Modélisation statistique pour les données complexes et le Big Data” du BUT Science des Données.
 L’objectif central est de comprendre, comparer et modéliser les capacités d’adaptation des pays face à l'évolution des indicateurs climatiques, socio-économiques et démographiques.
 
 🎯 Objectifs
-
 Explorer les données climatiques, environnementales et socio-économiques provenant de sources internationales (NASA, NOAA, Banque Mondiale, IPCC…).
 
 Étudier l’évolution temporelle d’au moins 10 indicateurs (CO₂, température, niveau des mers, PIB, population, ouragans, Gini, etc.).
 
 Mettre en place :
-
-une analyse descriptive approfondie,
-
-des modèles prédictifs,
-
-des analyses multivariées (ACP / ACM / classifications),
-
-une analyse géographique (cartographies).
+une analyse descriptive approfondie,des modèles prédictifs,des analyses multivariées (ACP / ACM / classifications),une analyse géographique (cartographies).
 
 Développer une application R Shiny permettant la visualisation interactive des résultats et éventuellement la mise à jour automatique via flux de données.
 
 🔍 Travail réalisé
-
 Revue documentaire
 Définition de la thématique choisie et sélection des indicateurs pertinents.
 
@@ -65,3 +55,7 @@ Git / GitHub pour la gestion du code
 Traitement de données massives & flux (selon les sources)
 
 📁 Structure du dépôt
+├── data/                 # Sources, datasets nettoyés
+├── scripts/              # Scripts d’analyse et de modélisation
+├── reports/              # Rapports 1, 2 et final
+└── README.md             # Description du projet

@@ -1,0 +1,64 @@
+---
+title: "Etude catastrophes"
+author: "SVP"
+date: "2024-02-07"
+output: 
+   word_document:
+     reference_docx: StylesPourWord.docx
+---
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+# Chargement des packages sans affichage dans Word
+suppressPackageStartupMessages(library(knitr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(sf))
+suppressPackageStartupMessages(library(openxlsx))
+suppressPackageStartupMessages(library(leaflet))
+suppressPackageStartupMessages(library(FactoMineR))
+```
+
+# Importation des données
+
+```{r}
+cat=openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/public_emdat_2024-01-22.xlsx")
+```
+
+Vérification
+
+```{r}
+head(cat)
+```
+
+Comptage par pays, par année et par type de catastrophe, du nombre de catastrophes, et du nombre de décès. 
+
+On se limite aux catastrophes liées au climat. 
+
+```{r}
+table(cat$Disaster.Group)
+table(cat$Disaster.Subgroup)
+table(cat$Disaster.Type)
+```
+
+Extraction des catastrophes climatiques
+
+```{r}
+catclim=cat[cat$Disaster.Subgroup=="Climatological",]
+```
+
+
+```{r}
+head(catclim)
+table(catclim$Disaster.Type)
+```
+
+Le nombre de catastrophes climatiques par année
+
+```{r}
+tcISO_an=table(catclim$ISO,catclim$Start.Year)
+nbcatclim_par_an=data.frame(Année=as.numeric(names(apply(tcISO_an,2,sum))),Nbcat=apply(tcISO_an,2,sum))
+plot(nbcatclim_par_an,type='l')
+ggplot(data=nbcatclim_par_an,aes(x=Année,y=Nbcat))+
+         geom_line()+
+  labs(title="Evolution du nombre de catastrophes climatiques",y="Nombre de catastrophes déclarées")
+```

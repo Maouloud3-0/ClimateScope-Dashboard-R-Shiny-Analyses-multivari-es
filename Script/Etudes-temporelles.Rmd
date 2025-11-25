@@ -1,0 +1,268 @@
+---
+title: "Etudes logitudinales"
+author: "SVP"
+date: "2024-01-24"
+output: 
+   word_document:
+     reference_docx: StylesPourWord.docx
+---
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+# chargement des packages
+library(knitr)
+library(ggplot2)
+library(dplyr)
+library(sf)
+library(openxlsx)
+library(leaflet)
+library(FactoMineR)
+```
+
+# Chargement des données
+
+```{r}
+blacksea=read.csv("Donnees/black-sea-level.txt",header=FALSE,sep=" ")
+```
+
+Vérification
+
+```{r}
+dim(blacksea)
+head(blacksea)
+blacksea=blacksea[,1:2]
+colnames(blacksea)=c("date","level")
+```
+
+Graphique sans package
+
+```{r}
+plot(blacksea,type='l',main="Evolution du niveau de la Mer Morte",xlab="Date",ylab="Niveau de la mer")
+abline(lm(blacksea$level~blacksea$date),col="red")
+```
+
+Graphique avec ggplot
+
+```{r}
+ggplot(data=blacksea, aes(x=date,y=level))+
+  geom_line()+
+  geom_smooth(method = "lm", se = FALSE)+
+  labs(title="Evolution du niveau de la mer morte")+
+  geom_text(aes(x = 2020, y = 0.24,
+                label = "Equation de la droite:\n level=-0.002*date+3.194"),
+            stat = "unique",col="blue")+
+  geom_vline(aes(xintercept=2023),col=alpha("green"))+
+  geom_vline(aes(xintercept=2022),col=alpha("green"))+
+  geom_vline(aes(xintercept=2021),col=alpha("green"))+
+  geom_vline(aes(xintercept=2020),col=alpha("green"))
+```
+
+Affichage de l'équation de la droite de régression. 
+
+```{r}
+reg=lm(blacksea$level~blacksea$date)
+summary(reg)
+```
+
+# Prévision à partir d'un modèle
+
+```{r}
+dates=2013:2030
+estim=reg$coefficients[1]+dates*reg$coefficients[2]
+data_estim=data.frame(dates,estim)
+```
+
+# Graphique avec les prévisions
+
+```{r}
+ggplot(data=data_estim, aes(x=dates,y=estim))+
+  geom_line(col="blue")+
+geom_line(data=blacksea, aes(x=date,y=level))+
+  labs(title="Evolution du niveau de la mer morte")+
+  geom_text(aes(x = 2020, y = 0.24,
+                label = "Equation de la droite:\n level=-0.002*date+3.194"),
+            stat = "unique",col="blue")
+
+```
+
+
+```{r}
+dim(blacksea)
+periode=sum(substr(blacksea$date,1,4)=="2014")
+print(paste("Période=",periode)) # 41 mesures dans une année
+sum(substr(blacksea$date,1,4)=="2013") # il n'y a que 33 mesures en 2013
+sum(substr(blacksea$date,1,4)=="2015") # il y a 42 mesures en 2015, donc période pas régulière
+for (i in 2013:2023)
+  print(paste("Nombre de mesures en",i,"=",sum(as.numeric(substr(blacksea$date,1,4))==i))) 
+```
+
+# Envoie d'un graphique dans un fichier
+
+```{r}
+png(file = "niveau_mermorte.png", width = 800, height = 700)
+ggplot(data=data_estim, aes(x=dates,y=estim))+
+  geom_line(col="blue")+
+geom_line(data=blacksea, aes(x=date,y=level))+
+  labs(title="Evolution du niveau de la Mer Morte")+
+  geom_text(aes(x = 2020, y = 0.24,
+                label = "Equation de la droite:\n level=-0.002*date+3.194"),
+            stat = "unique",col="blue")
+dev.off()
+```
+
+# Etude du lien entre le CO2 et la température
+
+Chargement des données de température annuelles. 
+
+```{r}
+temp=read.csv("Donnees/Land-Ocean-Temperature.txt",skip=5,header=FALSE,sep=" ")
+head(temp,2)
+temperature=data.frame(annee=temp$V1,temp=temp$V6,tlisse=temp$V11)
+head(temperature)
+summary(temperature)
+temperature=temperature[temperature$annee >= 1800,]
+summary(temperature)
+```
+
+Graphe des températures
+
+```{r}
+plot(temperature$annee,temperature$temp,type='l')
+lines(temperature$tlisse,col="orange")
+```
+
+Chargement des données de CO2
+
+```{r}
+co2=read.csv("Donnees/CO2.txt",skip=2,header=FALSE,sep=" ")
+head(co2,2)
+co2_b=data.frame(annee=co2$V2,mois=co2$V9,CO2mois=co2$V15,CO2desaison=co2$V21)
+head(co2_b)
+summary(co2_b)
+co2_b=co2_b[co2_b$annee>1900,]
+summary(co2_b)
+```
+
+Représentation graphique du CO2
+
+```{r}
+plot(co2_b$mois,co2_b$CO2mois,type='l')
+lines(co2_b$mois,co2_b$CO2desaison,col="orange")
+```
+
+Calcul des moyennes annuelles du CO2
+
+```{r}
+co2an=tapply(co2_b$CO2desaison,co2_b$annee,mean,na.rm=TRUE)
+annee=tapply(co2_b$annee,co2_b$annee,max)
+plot(annee,co2an,type='l')
+CO2par_an=data.frame(annee,co2an)
+```
+
+# Graphique du CO2 avec la température
+
+```{r}
+plot(temperature$annee,temperature$temp,type='l',ylim=c(-0.4,420))
+lines(annee,co2an)
+temperature[temperature$annee>1980,]
+```
+
+# Autres données de température
+
+```{r}
+tboulogne=read.csv("Donnees/SH_MTN462160001.csv",skip=12,sep=";")
+```
+
+Examen et mise en forme
+
+```{r}
+head(tboulogne)
+annee=as.numeric(substr(tboulogne$YYYYMM,1,4))
+mois=as.numeric(substr(tboulogne$YYYYMM,5,6))
+# calcul des moyennes annuelles
+moyan=tapply(tboulogne$VALEUR,annee,mean)
+summary(moyan)
+names(moyan)
+tpar_an=data.frame(annee=as.numeric(names(moyan)),temp_an=moyan)
+```
+
+Graphique
+```{r}
+plot(as.numeric(names(moyan)),moyan,type='l',main="Moyennes des minimales journalières, station de Boulogne")
+```
+
+# Fusion de ces données de températures avec CO2
+
+```{r}
+CO2par_an
+tpar_an
+T_CO2=merge(tpar_an,CO2par_an,by.x="annee",by.y="annee")
+T_CO2
+```
+
+# Graphique des deux courbes
+
+```{r}
+summary(T_CO2)
+ggplot(data=T_CO2, aes(x=annee,y=log(temp_an)))+
+  geom_line()+
+  geom_line(aes(x=annee,y=log(co2an)))
+```
+
+Corrélation entre température et CO2
+
+```{r}
+cor.test(T_CO2$temp_an,T_CO2$co2an)
+```
+
+# Prévision température avec modèle exponentiel
+
+```{r}
+Z=log(T_CO2$co2an)
+regexp=lm(Z~T_CO2$annee)
+```
+
+Modèle : log(co2an) = 0.004478*annee-3.035538. 
+
+```{r}
+previsionlog=regexp$coefficients[1]+T_CO2$annee*regexp$coefficients[2]
+prevision=exp(previsionlog)
+annee2050=1958:2050
+previsionlog2050=regexp$coefficients[1]+annee2050*regexp$coefficients[2]
+prevision2050=exp(previsionlog2050)
+```
+
+Graphique de la prévision
+
+```{r}
+prev2050=data.frame(annee2050,prevision2050)
+ggplot(data=prev2050, aes(x=annee2050,y=prevision2050))+geom_line()+
+  geom_line(data=T_CO2, aes(x=annee,y=co2an),col="red")
+```
+
+Autre prévision
+
+```{r}
+logZ=log(Z)
+regexp2=lm(logZ~T_CO2$annee)
+summary(regexp)
+summary(regexp2)
+```
+
+Modèle : log(log(co2an)) = 0.0007613*annee+0.2557527. 
+
+```{r}
+previsionloglog=regexp2$coefficients[1]+T_CO2$annee*regexp2$coefficients[2]
+prevision=exp(exp(previsionloglog))
+annee2050=1958:2050
+previsionloglog2050=regexp2$coefficients[1]+annee2050*regexp2$coefficients[2]
+prevision2_2050=exp(exp(previsionloglog2050))
+```
+
+Graphique de la prévision
+
+```{r}
+prev2_2050=data.frame(annee2050,prevision2_2050)
+ggplot(data=prev2_2050, aes(x=annee2050,y=prevision2_2050))+geom_line(col="green")+
+  geom_line(data=prev2050, aes(x=annee2050,y=prevision2050))+
+  geom_line(data=T_CO2, aes(x=annee,y=co2an),col="red")
+```

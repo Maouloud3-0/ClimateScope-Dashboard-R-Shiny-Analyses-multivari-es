@@ -1,0 +1,408 @@
+---
+title: "Données de pays et ACP"
+author: "SVP"
+date: "2024-01-19"
+output: word_document
+---
+
+Chargement bibliothèques
+
+```{r}
+library(dplyr)
+library(sf)
+library(openxlsx)
+library(leaflet)
+library(FactoMineR)
+library(readxl)
+
+```
+
+Importation des tables
+
+```{r}
+polluatmos =openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_EN.ATM.PM25.MC.ZS_DS2_fr_excel_v2_6318082.xlsx",sheet="Data",startRow=4)
+
+pib_hbts= openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_NY.GDP.PCAP.PP.CD_DS2_fr_excel_v2_6302713.xlsx",sheet="Data",startRow=4)
+
+croispibparhab = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Croissance du PIB par habitant (% annuel).xls", sheet = "Data", skip = 3)
+
+tmortinf = openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_SH.DYN.MORT_DS2_fr_excel_v2_6318260.xlsx",sheet="Data",startRow=4)
+
+Gini = openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_SI.POV.GINI_DS2_fr_excel_v2_6296705.xlsx",sheet="Data",startRow=4)
+
+populate = openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_SP.POP.TOTL_DS2_fr_excel_v2_6298123.xlsx",sheet="Data",startRow=4)
+
+tmortinf= openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_SH.DYN.MORT_DS2_fr_excel_v2_6318260.xlsx",sheet="Data",startRow=4)
+
+pourteagri= openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_AG.LND.AGRI.ZS_DS2_fr_excel_v2_16399.xlsx",sheet="Data",startRow=4)
+
+valeurajutagripib = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_NV.AGR.TOTL.ZS_DS2_fr_excel_v2_19839.xls", sheet = "Data", skip = 3)
+
+consoelecparhab = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Consommation d’électricité (KWh par habitant).xls", sheet = "Data", skip = 3)
+
+emisco2parhab = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Émissions de CO2 (tonnes métriques par habitant).xls", sheet = "Data", skip = 3)
+
+expominmet = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Exportations de minerais et de métaux (% des marchandises exportées).xls", sheet = "Data", skip = 3)
+
+trasautodanmond = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Transport aérien, départs des transporteurs autorisés à destination du monde.xls", sheet = "Data", skip = 3)
+
+populatact = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Population active, total.xls", sheet = "Data", skip = 3)
+
+tauxferti = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Taux de fertilité, total (naissances par femme).xls", sheet = "Data", skip = 3)
+
+inflation = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Inflation, prix à la consommation (% annuel).xls", sheet = "Data", skip = 3)
+
+capitaentrepeise = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Capitalisation boursière des entreprises intérieures cotées (USD courants).xls", sheet = "Data", skip = 3)
+
+zoneproteg = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Zones terrestres et marines protégées (% du territoire total).xls", sheet = "Data", skip = 3)
+
+emiGES = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Émissions totales de GES (kt d’équivalent CO2).xls", sheet = "Data", skip = 3)
+
+```
+
+remplissage 
+
+```{r}
+
+remplir_donnees_proches <- function(data, colonnes_annees) {
+    for (i in 1:nrow(data)) {
+        for (col in colonnes_annees) {
+            # Vérifier si la valeur actuelle est NA
+            if (is.na(data[i, col])) {
+                # Recherche de la valeur non-NA la plus proche dans les années précédentes et suivantes
+                annee_proche <- NULL
+                decalage <- 1
+                while (is.null(annee_proche) && ((col - decalage) >= min(colonnes_annees) || (col + decalage) <= max(colonnes_annees))) {
+                    if ((col - decalage) >= min(colonnes_annees) && !is.na(data[i, col - decalage])) {
+                        annee_proche <- data[i, col - decalage]
+                    } else if ((col + decalage) <= max(colonnes_annees) && !is.na(data[i, col + decalage])) {
+                        annee_proche <- data[i, col + decalage]
+                    }
+                    decalage <- decalage + 1
+                }
+                
+                # Remplacer le NA par la valeur la plus proche trouvée
+                if (!is.null(annee_proche)) {
+                    data[i, col] <- annee_proche
+                }
+            }
+        }
+    }
+    return(data)
+}
+
+# Supposons que colonnes_annees contienne les indices des colonnes d'année dans votre dataframe
+# Supposons que votre dataframe est nommé 'dataframe'
+# Filtrer les lignes pour les pays choisis
+
+colonnes_annees <- 5:ncol(polluatmos)  
+polluatmos <- remplir_donnees_proches(polluatmos, colonnes_annees)
+
+colonnes_annees <- 5:ncol(pib_hbts) 
+pib_hbts <- remplir_donnees_proches(pib_hbts, colonnes_annees)
+
+colonnes_annees <- 5:ncol(croispibparhab) 
+croispibparhab <- remplir_donnees_proches(croispibparhab, colonnes_annees)
+
+colonnes_annees <- 5:ncol(tmortinf) 
+tmortinf <- remplir_donnees_proches(tmortinf, colonnes_annees)
+
+colonnes_annees <- 5:ncol(Gini) 
+Gini <- remplir_donnees_proches(Gini, colonnes_annees)
+
+colonnes_annees <- 5:ncol(populate) 
+populate <- remplir_donnees_proches(populate, colonnes_annees)
+
+colonnes_annees <- 5:ncol(tmortinf)
+tmortinf <- remplir_donnees_proches(tmortinf, colonnes_annees)
+
+colonnes_annees <- 5:ncol(pourteagri)  # Ajustez cette plage selon la structure réelle de votre dataframe
+pourteagri <- remplir_donnees_proches(pourteagri, colonnes_annees)
+
+colonnes_annees <- 5:ncol(valeurajutagripib)
+valeurajutagripib <- remplir_donnees_proches(valeurajutagripib, colonnes_annees)
+
+colonnes_annees <- 5:ncol(consoelecparhab) 
+consoelecparhab <- remplir_donnees_proches(consoelecparhab, colonnes_annees)
+
+colonnes_annees <- 5:ncol(emisco2parhab) 
+emisco2parhab <- remplir_donnees_proches(emisco2parhab, colonnes_annees)
+
+colonnes_annees <- 5:ncol(expominmet) 
+expominmet <- remplir_donnees_proches(expominmet, colonnes_annees)
+
+colonnes_annees <- 5:ncol(trasautodanmond) 
+trasautodanmond <- remplir_donnees_proches(trasautodanmond, colonnes_annees)
+
+colonnes_annees <- 5:ncol(tauxferti) 
+tauxferti <- remplir_donnees_proches(tauxferti, colonnes_annees)
+
+colonnes_annees <- 5:ncol(inflation)
+inflation <- remplir_donnees_proches(inflation, colonnes_annees)
+
+colonnes_annees <- 5:ncol(capitaentrepeise) 
+capitaentrepeise <- remplir_donnees_proches(capitaentrepeise, colonnes_annees)
+
+colonnes_annees <- 5:ncol(emiGES) 
+emiGES <- remplir_donnees_proches(emiGES, colonnes_annees)
+
+colonnes_annees <- 5:ncol(zoneproteg) 
+zoneproteg <- remplir_donnees_proches(zoneproteg, colonnes_annees)
+
+#polluatmos,pib_hbts,croispibparhab,tmortinf,Gini,populate,tmortinf,pourteagri,valeurajutagripib,consoelecparhab,emisco2parhab,expominmet,trasautodanmond,populatact,tauxferti,inflation,capitaentrepeise,zoneproteg,emiGES
+```
+
+ analyse multivariée (ACP, 
+AFCM, Classification),
+
+# Fusion des colonnes de données complétées
+
+dette, acces_elec, CO2, m5m, Gini, prurale
+
+```{r}
+meta=openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_EN.ATM.PM25.MC.ZS_DS2_fr_excel_v2_6318082.xlsx",sheet="Metadata - Countries")
+head(meta)
+
+donnees_ini_eco=data.frame(pib_hbts=pib_hbts,croispibhab=croispibparhab,tmortinf=tmortinf,Gini=Gini,populat=populate,consoelechab=consoelecparhab,expominmet=expominmet,transautomonde=trasautodanmond,populatactive=populatact,tauxferti=tauxferti,inflation=inflation,capitaentrepeise=capitaentrepeise,emiGES=emiGES,pollu_atmos=polluatmos,emisco2parhab=emisco2parhab,expominmet=expominmet)
+
+emisco2parhab
+donnees_ini_géophi=data.frame(pollu_atmos=polluatmos,pourteagri=pourteagri,valeurajutagripib=valeurajutagripib,emisco2parhab=emisco2parhab,expominmet=expominmet,zoneproteg=zoneproteg,emiGES=emiGES)
+
+# Exemple de sélection manuelle basée sur une représentation globale
+pays_choisis <- c("Nigéria", "Angola", "Australie", "France","Inde","Brésil", "Canada", "Chine", "Égypte",
+                  "République arabe d’", "Nigéria", "Fédération de Russie","Mali","États-Unis","Japon",
+                  "Danemark" ,"Royaume-Uni","Israël","Kazakhstan","Afrique du Sud")
+
+# Filtrer les lignes pour les pays choisis
+dataframe_eco <- donnees_ini_eco[donnees_ini_eco$pib_hbts.Country.Name %in% pays_choisis,]
+# Supposons que 'dataframe_eco' est votre dataframe
+# dataframe_eco <- data.frame(col1 = 1:5, col2 = letters[1:5], col3 = 6:10, col4 = LETTERS[1:5], col5 = 11:15)
+
+# Identifier les colonnes à partir de la troisième
+cols_to_check <- names(dataframe_eco)[3:length(dataframe_eco)]
+
+# Vérifier le type de chaque colonne et conserver seulement les colonnes numériques
+numeric_cols <- sapply(dataframe_eco[cols_to_check], is.numeric)
+
+# Exclure les colonnes non numériques à partir de la troisième colonne
+dataframe_eco_updated <- dataframe_eco[c(names(dataframe_eco)[1:2], cols_to_check[numeric_cols])]
+
+# Afficher le dataframe mis à jour
+print(dataframe_eco_updated)
+
+# Définir les nouveaux noms pour les deux premières colonnes
+nouveaux_noms <- c("Pays", "ISO")
+
+# Renommer les deux premières colonnes du dataframe
+colnames(dataframe_eco_updated)[1:2] <- nouveaux_noms
+
+# Afficher le dataframe pour vérifier les changements
+print(dataframe_eco_updated)
+
+
+dataframe_géophi<- donnees_ini_géophi[donnees_ini_géophi$pollu_atmos.Country.Name %in% pays_choisis,]
+
+```
+
+# Importation de la carte du monde
+
+```{r}
+monde <- st_read("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/monde/monde.shp")
+head(monde)
+dim(monde)
+
+```
+
+
+# Vérification
+```{r}
+# Assurez-vous que les packages nécessaires sont installés
+if (!require("FactoMineR")) install.packages("FactoMineR")
+if (!require("factoextra")) install.packages("factoextra")
+if (!require("missMDA")) install.packages("missMDA")
+
+# Assurez-vous d'avoir installé les packages nécessaires avec install.packages(c("FactoMineR", "factoextra"))
+library(FactoMineR)
+library(factoextra)
+
+# Sélectionner des colonnes spécifiques par leur nom
+data_eco <- dataframe_eco[,c("pib_hbts.Country.Name", "pib_hbts.Country.Code", "pib_hbts.2022", "croispibhab.2022", "tmortinf.2022", "Gini.2022", "consoelechab.2022", "expominmet.2022", "transautomonde.2022", "populatactive.2022","tauxferti.2022","inflation.2022","capitaentrepeise.2022","emiGES.2022")]
+
+# Assurez-vous d'avoir le bon vecteur des noms de pays
+country_names <- data_eco$pib_hbts.Country.Name
+country_names
+
+# Supposons que 'data_eco' est votre dataframe avec des données économiques
+data_ec <- data_eco %>% 
+  select(pib_hbts.2022, croispibhab.2022, tmortinf.2022, Gini.2022, consoelechab.2022, expominmet.2022, transautomonde.2022, populatactive.2022,tauxferti.2022,inflation.2022,capitaentrepeise.2022,emiGES.2022) 
+# Retirer les lignes contenant des NA
+
+# Effectuer l'ACP
+res_pca <- PCA(data_ec, scale.unit = TRUE, ncp = 4, graph = FALSE)
+
+# Vérifier que le vecteur des noms des pays est bien de la même longueur que le nombre d'individus
+
+# Si les longueurs correspondent, utilisez fviz_pca_ind
+fviz_pca_ind(res_pca, 
+             #label = country_names, 
+             col.ind = "cos2", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+
+# Visualiser les variables avec leur contribution sur les composantes principales
+fviz_pca_var(res_pca,
+             col.var = "contrib",  # Colorer par la contribution des variables
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE  # Éviter le chevauchement des étiquettes
+)
+
+# Pour obtenir les contributions des individus aux axes
+res_pca$ind$contrib
+
+res_pca$var$cos2
+
+
+# Afficher les valeurs propres et le pourcentage de variance expliquée
+res_pca$eig
+
+# Pour visualiser les variances expliquées par les composantes principales, utilisez le code suivant:
+fviz_eig(res_pca, addlabels = TRUE, ylim = c(0, 100))
+
+
+# Chargement des packages nécessaires
+if (!require("factoextra")) install.packages("factoextra")
+library(factoextra)
+if (!require("cluster")) install.packages("cluster")
+library(cluster)
+
+# Préparation des données
+# Votre dataframe est nommé 'data_eco'
+# Présumons que 'data_eco' a les colonnes de pays comme les premières colonnes et le reste sont des variables économiques
+data_eco_num <- data_eco[, sapply(data_eco, is.numeric)]
+data_eco_clean <- na.omit(data_eco_num)
+data_eco_clean <- data_eco_clean[, sapply(data_eco_clean, function(x) all(is.finite(x)))]
+
+# Normalisation des données pour le clustering
+data_eco_normalized <- scale(data_eco_clean)
+
+# Choix du nombre de clusters avec la méthode du coude
+fviz_nbclust(data_eco_normalized, kmeans, method = "wss") + geom_vline(xintercept = 3, linetype = 2)
+
+# Exécuter le clustering avec k-means
+set.seed(123) # Pour la reproductibilité
+k <- 3 # Ce nombre peut changer selon votre analyse du coude
+clusters <- kmeans(data_eco_normalized, centers = k)
+
+# Ajouter l'assignation des clusters au dataframe original
+data_eco$cluster <- clusters$cluster[match(row.names(data_eco), row.names(data_eco_clean))]
+
+# Examiner les clusters
+# Afficher la taille des clusters
+print(table(data_eco$cluster))
+
+# Calculer les moyennes des variables pour chaque cluster
+cluster_means <- aggregate(. ~ cluster, data = data_eco, FUN = mean)
+
+# Examiner les caractéristiques moyennes de chaque cluster
+print(cluster_means)
+
+# Si vous voulez voir la répartition des pays dans chaque cluster :
+split(data_eco$pib_hbts.Country.Name, data_eco$cluster)
+
+# Visualisation des clusters avec PCA pour les 2 premières composantes principales
+fviz_cluster(clusters, data = data_eco_normalized, geom = "point", 
+             stand = FALSE, frame.type = "norm")
+
+
+########################################################################
+
+data_géophi <- dataframe_géophi[,c("pollu_atmos.Country.Name", "pollu_atmos.Country.Code", "pollu_atmos.2022", "pourteagri.2022", "emisco2parhab.2022", "expominmet.2022",  "zoneproteg.2022","emiGES.2022")]
+
+# Assurez-vous d'avoir le bon vecteur des noms de pays
+country_names <- dataframe_géophi$pollu_atmos.Country.Name
+country_names
+
+# Supposons que 'data_eco' est votre dataframe avec des données économiques
+data_geo <- data_géophi %>% 
+  select(pollu_atmos.2022, pourteagri.2022, emisco2parhab.2022, expominmet.2022,zoneproteg.2022,emiGES.2022) 
+# Retirer les lignes contenant des NA
+
+# Effectuer l'ACP
+res_pca <- PCA(data_geo, scale.unit = TRUE, ncp = 4, graph = FALSE)
+
+# Vérifier que le vecteur des noms des pays est bien de la même longueur que le nombre d'individus
+
+# Si les longueurs correspondent, utilisez fviz_pca_ind
+fviz_pca_ind(res_pca, 
+             #label = country_names, 
+             col.ind = "cos2", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+
+# Visualiser les variables avec leur contribution sur les composantes principales
+fviz_pca_var(res_pca,
+             col.var = "contrib",  # Colorer par la contribution des variables
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE  # Éviter le chevauchement des étiquettes
+)
+
+# Pour obtenir les contributions des individus aux axes
+res_pca$ind$contrib
+
+res_pca$var$cos2
+
+
+# Afficher les valeurs propres et le pourcentage de variance expliquée
+res_pca$eig
+
+# Pour visualiser les variances expliquées par les composantes principales, utilisez le code suivant:
+fviz_eig(res_pca, addlabels = TRUE, ylim = c(0, 100))
+
+# Chargement des packages nécessaires
+if (!require("factoextra")) install.packages("factoextra")
+library(factoextra)
+if (!require("cluster")) install.packages("cluster")
+library(cluster)
+
+# Préparation des données
+# Supposons que data_geo contient une colonne 'CountryName' avec les noms des pays
+data_geo_num <- data_geo[, sapply(data_geo, is.numeric)]  # Sélection des colonnes numériques
+data_geo_clean <- na.omit(data_geo_num)  # Nettoyage des données numériques
+
+# Assurons-nous d'ajouter les noms des pays à data_geo_clean
+country_names <- data_geo$CountryName[match(row.names(data_geo_clean), row.names(data_geo))]
+data_geo_clean <- cbind(CountryName = dataframe_géophi$pollu_atmos.Country.Name, data_geo_clean)  # Ajouter les noms des pays
+
+# Normalisation des données pour le clustering
+data_geo_normalized <- scale(data_geo_clean[, -1])  # Exclure la colonne des noms des pays pour la normalisation
+
+# Choix du nombre de clusters avec la méthode du coude
+fviz_nbclust(data_geo_normalized, kmeans, method = "wss") + geom_vline(xintercept = 3, linetype = 2)
+
+# Exécuter le clustering avec k-means
+set.seed(123)  # Pour la reproductibilité
+k <- 3  # Définir le nombre de clusters souhaité
+clusters <- kmeans(data_geo_normalized, centers = k)
+
+# Ajouter l'assignation des clusters à data_geo_clean
+data_geo_clean$cluster <- clusters$cluster
+
+# Calculer les moyennes des variables pour chaque cluster
+cluster_means <- aggregate(. ~ cluster, data = data_geo_clean, FUN = mean)
+
+# Examiner les caractéristiques moyennes de chaque cluster
+print(cluster_means)
+
+# Afficher les noms des pays dans chaque cluster
+country_cluster <- split(data_geo_clean$CountryName, data_geo_clean$cluster)
+print(country_cluster)
+
+# Visualisation des clusters
+fviz_cluster(list(data = data_geo_normalized, cluster = data_geo_clean$cluster), geom = "point", 
+             ellipse.type = "norm")
+
+
+
+data_geo$pollu_atmos.Country.Name
+
+```

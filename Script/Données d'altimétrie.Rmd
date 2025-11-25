@@ -1,0 +1,126 @@
+---
+title: "TP données d'altimétrie"
+output: html_document
+date: "2024-01-24"
+---
+
+# Chargement des packages 
+
+```{r}
+library(knitr)
+library(ggplot2)
+```
+
+# Chargement des données
+
+```{r}
+blacksea <- read.table("MSL_Serie_AL_BlackSea_AVISO_NoGIA_Adjust_Filter2m.txt", header = FALSE, sep = " ")
+```
+
+Vérification
+
+```{r}
+dim(blacksea)
+head(blacksea)
+blacksea=blacksea[,1:2]
+colnames(blacksea)=c("date","level")
+```
+Graphique sans package
+
+```{r}
+plot(blacksea,type='l',main="Evolution du niveau de la mer morte",xlab="Date",ylab="Niveau de la mer")
+abline(lm(blacksea$level~blacksea$date),col="red")
+```
+
+La mer noire à son niveau qui baisse de manière globale 
+On peut chercher à savoir avec l'intervalle de confiance si cette baisse est significative ou c'est juste le fruit du hasard
+
+Graphique avec ggplot
+
+```{r}
+ggplot(data = blacksea,aes(x=date,y=level))+
+  geom_line()+
+  geom_smooth(method="lm",se=FALSE)+
+  labs(title = "Evolution du niveau de la mer morte")+
+  geom_text(aes(x=2020,y=0.24,
+            label="Equation de la droite:/n level=0.002*date+3.194"),stat="unique",col="blue")+
+  geom_vline(aes(xintercept=2023),col=alpha("green"))
+  geom_vline(aes(xintercept=2022),col=alpha("green"))
+  geom_vline(aes(xintercept=2021),col=alpha("green"))
+  geom_vline(aes(xintercept=2020),col=alpha("green"))
+    
+  
+```
+
+Il n'y a pas de saisonalité particulière
+Affichage de l'équation de la droite de régression
+
+```{r}
+## regression
+reg=lm(blacksea$level~blacksea$date)
+summary(reg)
+```
+
+Si p-value > 0,1 donne test non significatif à 10%
+(il y a souvent un ".")Si p-value appartient à ]0,05;0,1] donne test non significatif à 5%
+                                                                test significatiif à 10%
+(il y a souvent une "*")Si p-value appartient à ]0,01;0,05] donne test non significatif à 1%
+                                                                  test significatif à 5%
+(il y a souvent "**") Si p-value appartient à ]0,001;0,01] donne test non significatif à 1%
+                                                                 test significatif à 1%
+(il y a souvent "***") Si p-value < 0,001 donne test significatif à 1%
+
+y=ax+b
+intercept  H0: b=0,H1 différent de s0 test significatif  équivaut b est significativement différent de 0
+blacksea$date  H0: a=0 ,H1:a différent de 0
+
+On a une tendance à la baisse de la mer noire mais significative à 10%
+
+
+Prévision à partir du modèle
+
+```{r}
+reg$coefficients
+dates=2013:2030
+estim=reg$coefficients[1]+dates*reg$coefficients[2]
+data_estim=data.frame(dates,estim)
+# length(dates)
+# length(estim)
+```
+
+# Graphique avec les prévisions
+
+```{r}
+ggplot(data_estim,aes(x=dates,y=estim))+
+  geom_line(col="blue")+
+  geom_line(data=blacksea,aes(x=date,y=level))+
+  labs(title = "Evolution du niveau de la mer morte")+
+  geom_text(aes(x=2020,y=0.24,
+            label="Equation de la droite:/n level=0.002*date+3.194"),stat="unique",col="blue")
+```
+
+
+```{r}
+dim(blacksea)
+periode=sum(substr(blacksea$date,1,4)=="2014")
+print(paste("Période=",periode)) # 41 mesures dans une année
+sum(substr(blacksea,1,4)=="2013") # il n'y a que 33 mesures en 2013
+sum(substr(blacksea,1,4)=="2015") # il y a 42 mesures en 2015, donc périodes pas régulières
+for (i in 2013:2023)
+  print(paste("Nombre de mesures en",i,"=",sum(as.numeric(substr(blacksea$date,1,4))==i)))
+```
+
+# Envoie d'un graphique dans un fichier
+
+```{r}
+png(file="niveau_mermorte.png",width = 800, height = 700)
+ggplot(data_estim,aes(x=dates,y=estim))+
+  geom_line(col="blue")+
+geom_line(data=blacksea,aes(x=date,y=level))+
+  labs(title = "Evolution du niveau de la mer morte")+
+  geom_text(aes(x=2020,y=0.24,
+                label="Equation de la droite:/n level=0.002*date+3.194"),
+            stat="unique",col="blue")
+dev.off()
+```
+

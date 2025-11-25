@@ -1,0 +1,403 @@
+---
+title: "Données de pays et ACP"
+author: "SVP"
+date: "2024-01-19"
+output: word_document
+---
+
+Chargement bibliothèques
+
+```{r}
+library(dplyr)
+library(sf)
+library(openxlsx)
+library(leaflet)
+library(FactoMineR)
+library(readxl)
+
+```
+
+Importation des tables
+
+```{r}
+polluatmos =openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_EN.ATM.PM25.MC.ZS_DS2_fr_excel_v2_6318082.xlsx",sheet="Data",startRow=4)
+
+pib_hbts= openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_NY.GDP.PCAP.PP.CD_DS2_fr_excel_v2_6302713.xlsx",sheet="Data",startRow=4)
+
+croispibparhab = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Croissance du PIB par habitant (% annuel).xls", sheet = "Data", skip = 3)
+
+tmortinf=openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_SH.DYN.MORT_DS2_fr_excel_v2_6318260.xlsx",sheet="Data",startRow=4)
+
+Gini =openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_SI.POV.GINI_DS2_fr_excel_v2_6296705.xlsx",sheet="Data",startRow=4)
+
+populate= openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_SP.POP.TOTL_DS2_fr_excel_v2_6298123.xlsx",sheet="Data",startRow=4)
+
+tmortinf=openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_SH.DYN.MORT_DS2_fr_excel_v2_6318260.xlsx",sheet="Data",startRow=4)
+
+pourteagri=openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_AG.LND.AGRI.ZS_DS2_fr_excel_v2_16399.xlsx",sheet="Data",startRow=4)
+
+valeurajutagripib = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_NV.AGR.TOTL.ZS_DS2_fr_excel_v2_19839.xls", sheet = "Data", skip = 3)
+
+consoelecparhab = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Consommation d’électricité (KWh par habitant).xls", sheet = "Data", skip = 3)
+
+emisco2parhab = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Émissions de CO2 (tonnes métriques par habitant).xls", sheet = "Data", skip = 3)
+
+expominmet = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Exportations de minerais et de métaux (% des marchandises exportées).xls", sheet = "Data", skip = 3)
+
+trasautodanmond = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Transport aérien, départs des transporteurs autorisés à destination du monde.xls", sheet = "Data", skip = 3)
+
+populatact = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Population active, total.xls", sheet = "Data", skip = 3)
+
+tauxferti = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Taux de fertilité, total (naissances par femme).xls", sheet = "Data", skip = 3)
+
+inflation = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Inflation, prix à la consommation (% annuel).xls", sheet = "Data", skip = 3)
+
+capitaentrepeise = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Capitalisation boursière des entreprises intérieures cotées (USD courants).xls", sheet = "Data", skip = 3)
+
+zoneproteg = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Zones terrestres et marines protégées (% du territoire total).xls", sheet = "Data", skip = 3)
+
+emiGES = readxl::read_excel("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/Émissions totales de GES (kt d’équivalent CO2).xls", sheet = "Data", skip = 3)
+
+```
+
+
+
+```{r}
+
+remplir_donnees_proches <- function(data, colonnes_annees) {
+    for (i in 1:nrow(data)) {
+        for (col in colonnes_annees) {
+            # Vérifier si la valeur actuelle est NA
+            if (is.na(data[i, col])) {
+                # Recherche de la valeur non-NA la plus proche dans les années précédentes et suivantes
+                annee_proche <- NULL
+                decalage <- 1
+                while (is.null(annee_proche) && ((col - decalage) >= min(colonnes_annees) || (col + decalage) <= max(colonnes_annees))) {
+                    if ((col - decalage) >= min(colonnes_annees) && !is.na(data[i, col - decalage])) {
+                        annee_proche <- data[i, col - decalage]
+                    } else if ((col + decalage) <= max(colonnes_annees) && !is.na(data[i, col + decalage])) {
+                        annee_proche <- data[i, col + decalage]
+                    }
+                    decalage <- decalage + 1
+                }
+                
+                # Remplacer le NA par la valeur la plus proche trouvée
+                if (!is.null(annee_proche)) {
+                    data[i, col] <- annee_proche
+                }
+            }
+        }
+    }
+    return(data)
+}
+
+# Supposons que colonnes_annees contienne les indices des colonnes d'année dans votre dataframe
+# Supposons que votre dataframe est nommé 'dataframe'
+# Filtrer les lignes pour les pays choisis
+
+colonnes_annees <- 5:ncol(polluatmos)  
+polluatmos <- remplir_donnees_proches(polluatmos, colonnes_annees)
+
+colonnes_annees <- 5:ncol(pib_hbts) 
+pib_hbts <- remplir_donnees_proches(pib_hbts, colonnes_annees)
+
+colonnes_annees <- 5:ncol(croispibparhab) 
+croispibparhab <- remplir_donnees_proches(croispibparhab, colonnes_annees)
+
+colonnes_annees <- 5:ncol(tmortinf) 
+tmortinf <- remplir_donnees_proches(tmortinf, colonnes_annees)
+
+colonnes_annees <- 5:ncol(Gini) 
+Gini <- remplir_donnees_proches(Gini, colonnes_annees)
+
+colonnes_annees <- 5:ncol(populate) 
+populate <- remplir_donnees_proches(populate, colonnes_annees)
+
+colonnes_annees <- 5:ncol(tmortinf)
+tmortinf <- remplir_donnees_proches(tmortinf, colonnes_annees)
+
+colonnes_annees <- 5:ncol(pourteagri)  # Ajustez cette plage selon la structure réelle de votre dataframe
+pourteagri <- remplir_donnees_proches(pourteagri, colonnes_annees)
+
+colonnes_annees <- 5:ncol(valeurajutagripib)
+valeurajutagripib <- remplir_donnees_proches(valeurajutagripib, colonnes_annees)
+
+colonnes_annees <- 5:ncol(consoelecparhab) 
+consoelecparhab <- remplir_donnees_proches(consoelecparhab, colonnes_annees)
+
+colonnes_annees <- 5:ncol(emisco2parhab) 
+emisco2parhab <- remplir_donnees_proches(emisco2parhab, colonnes_annees)
+
+colonnes_annees <- 5:ncol(expominmet) 
+expominmet <- remplir_donnees_proches(expominmet, colonnes_annees)
+
+colonnes_annees <- 5:ncol(trasautodanmond) 
+trasautodanmond <- remplir_donnees_proches(trasautodanmond, colonnes_annees)
+
+colonnes_annees <- 5:ncol(tauxferti) 
+tauxferti <- remplir_donnees_proches(tauxferti, colonnes_annees)
+
+colonnes_annees <- 5:ncol(inflation)
+inflation <- remplir_donnees_proches(inflation, colonnes_annees)
+
+colonnes_annees <- 5:ncol(capitaentrepeise) 
+capitaentrepeise <- remplir_donnees_proches(capitaentrepeise, colonnes_annees)
+
+colonnes_annees <- 5:ncol(emiGES) 
+emiGES <- remplir_donnees_proches(emiGES, colonnes_annees)
+
+colonnes_annees <- 5:ncol(zoneproteg) 
+zoneproteg <- remplir_donnees_proches(zoneproteg, colonnes_annees)
+
+#polluatmos,pib_hbts,croispibparhab,tmortinf,Gini,populate,tmortinf,pourteagri,valeurajutagripib,consoelecparhab,emisco2parhab,expominmet,trasautodanmond,populatact,tauxferti,inflation,capitaentrepeise,zoneproteg,emiGES
+```
+
+ analyse multivariée (ACP, 
+AFCM, Classification),
+
+```{r}
+
+```
+
+# Fusion des colonnes de données complétées
+
+dette, acces_elec, CO2, m5m, Gini, prurale
+
+```{r}
+meta=openxlsx::read.xlsx("C:/Users/gaous/Desktop/BUT 3/S6/big data/BUT3 - SAÉ 6.EMS.01 - Big Data/Données/API_EN.ATM.PM25.MC.ZS_DS2_fr_excel_v2_6318082.xlsx",sheet="Metadata - Countries")
+head(meta)
+
+donnees_ini=data.frame(polluatmos=polluatmos,pib_hbts=pib_hbts,croispibparhab=croispibparhab,tmortinf=tmortinf,Gini=Gini,populate=populate,tmortinf=tmortinf,pourteagri=pourteagri,valeurajutagripib=valeurajutagripib,consoelecparhab=consoelecparhab,emisco2parhab=emisco2parhab,expominmet=expominmet,trasautodanmond=trasautodanmond,populatact=populatact,tauxferti=tauxferti,inflation=inflation,capitaentrepeise=capitaentrepeise,zoneproteg=zoneproteg,emiGES=emiGES)
+
+# Exemple de sélection manuelle basée sur une représentation globale
+pays_choisis <- c("Aruba", "Angola", "Australie", "France", "Inde", 
+                  "Brésil", "Canada", "Chine", "Égypte, République arabe d’", "Nigéria", 
+                  "Fédération de Russie","Mali","États-Unis","Japon" )
+
+# Filtrer les lignes pour les pays choisis
+dataframe_filtré <- donnees_ini[donnees_ini$polluatmos.Country.Name %in% pays_choisis, ]
+```
+
+
+# Vérification
+```{r}
+# Assurez-vous que les packages nécessaires sont installés
+if (!require("FactoMineR")) install.packages("FactoMineR")
+if (!require("factoextra")) install.packages("factoextra")
+if (!require("missMDA")) install.packages("missMDA")
+
+# Charger les libraries
+library(FactoMineR)
+library(factoextra)
+library(missMDA)
+library(dplyr)
+
+
+calculate_means <- function(df, word) {
+  cols <- grep(word, names(df), value = TRUE)
+  # Filtre pour garder seulement les colonnes qui sont numériques
+  numeric_cols <- cols[sapply(df[, cols, drop = FALSE], is.numeric)]
+  
+  if (length(numeric_cols) > 1) {
+    # Calculer la moyenne de ces colonnes et créer une nouvelle colonne
+    df[[paste0(word, "_mean")]] <- rowMeans(df[, numeric_cols, drop = FALSE], na.rm = TRUE)
+  }
+  # Supprimer les colonnes originales numériques utilisées pour la moyenne
+  df <- df %>% select(-one_of(numeric_cols))
+  return(df)
+}
+
+# Appliquez maintenant cette fonction à votre dataframe
+for (word in base_words) {
+  dataframe <- calculate_means(dataframe, word)
+}
+dataframe=as.data.frame(dataframe)
+library(dplyr)
+
+# Ajouter une nouvelle colonne avec mutate()
+dataframe <- dataframe %>%
+  mutate(nouvelle_colonne = 0)
+
+# Vérifiez que les deux dataframes ont le même nombre de lignes
+if (nrow(dataframe) == nrow(dataframe_filtré)) {
+  # Ajoutez la colonne de dataframe2 à dataframe1
+  dataframe$colonne_nouvelle <- dataframe_filtré$polluatmos.Country.Name
+} else {
+  stop("Les dataframes n'ont pas le même nombre de lignes")
+}
+
+# Vérifiez que 'dataframe' est bien un dataframe
+print(class(dataframe))
+print(dim(dataframe)) 
+
+# Déplacer 'colonne_a_deplacer' en première position
+dataframe <- dataframe %>% 
+  select(colonne_nouvelle, everything())
+
+# Utilisation de dplyr
+dataframe <- dataframe %>% select(-nouvelle_colonne)
+
+# Vérifiez que le nombre de colonnes TRUE est correct pour is.numeric
+print(sum(sapply(dataframe, is.numeric)))
+
+# Assurez-vous que vous avez les bonnes dimensions
+if (is.data.frame(dataframe)) {
+  # Si c'est un dataframe, extrayez les colonnes numériques correctement
+  dataframe_numeric <- dataframe[, sapply(dataframe, is.numeric)]
+  
+  # Vérifiez la structure du nouveau dataframe
+  print(dim(dataframe_numeric))
+
+  # Maintenant, appliquez l'ACP
+  res.pca <- PCA(dataframe_numeric, scale.unit = TRUE, ncp = 5, graph = FALSE)
+  
+  # Affichage des résultats
+  print(res.pca)
+  # Ajoutez les noms des pays aux résultats de l'ACP
+  res.pca$ind$names <- dataframe$colonne_nouvelle
+  # Visualiser les résultats de l'ACP
+  fviz_pca_ind(res.pca,  col.ind = "cos2", 
+               gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+               repel = TRUE) 
+  
+  fviz_pca_var(res.pca, col.var = "contrib", 
+               gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+               repel = TRUE)
+} else {
+  stop("Votre 'dataframe' n'est pas un dataframe.")
+}
+# Ajoutez les noms des pays aux résultats de l'ACP
+res.pca$ind$names <- dataframe$colonne_nouvelle
+res.pca$ind$contrib
+## Assurez-vous que la qualité de représentation est bien calculée
+if(length(res.pca$ind$cos2) == nrow(res.pca$ind$coord)) {
+  # Si les longueurs correspondent, vous pouvez utiliser col.ind pour colorer les points
+  fviz_pca_ind(res.pca,
+               label = "ind.names",
+               col.ind = res.pca$ind$cos2,  # Colorer les points par leur qualité de représentation sur les facteurs
+               gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),  # Couleurs pour les points
+               repel = TRUE  # Éviter le chevauchement des étiquettes
+  )
+} else {
+  # Sinon, omettez col.ind et utilisez les paramètres par défaut
+  fviz_pca_ind(res.pca,
+               label = "ind.names",
+               gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),  # Couleurs pour les points
+               repel = TRUE  # Éviter le chevauchement des étiquettes
+  )
+}
+
+########################################################################
+
+# Sélectionner uniquement les variables numériques
+dataframe_numeric <- dataframe_filtré[, sapply(dataframe_filtré, is.numeric)]
+
+# Imputation des valeurs manquantes, si nécessaire
+# Vous pouvez utiliser la moyenne, la médiane ou une autre méthode appropriée
+# Exemple avec imputePCA
+if(sum(is.na(dataframe_numeric)) > 0){
+  imputation_results <- imputePCA(dataframe_numeric, scale.unit = TRUE, ncp = 5)
+  dataframe_numeric <- imputation_results$completeObs
+}
+
+# Vérifier s'il y a des valeurs infinies et les remplacer par NA
+dataframe_numeric[!is.finite(dataframe_numeric)] <- NA
+
+# Gérer les valeurs NA résultantes après le traitement des Inf
+# Vous pouvez les imputer ou les supprimer
+# Exemple : Supprimer les lignes contenant des NA
+dataframe_numeric <- na.omit(dataframe_numeric)
+
+# Effectuer la classification par k-means
+set.seed(123)
+kmeans_results <- kmeans(dataframe_numeric[, 1:5], centers = 3)
+
+# Visualiser les résultats de la classification
+# Vous devez installer et charger 'factoextra' pour utiliser fviz_cluster
+if (!require("factoextra")) install.packages("factoextra")
+library(factoextra)
+fviz_cluster(kmeans_results, data = dataframe_numeric[, 1:5])
+
+```
+
+# Extraction des pays d'intérêt
+
+```{r}
+donnees_ini$ISO
+pays_interet=donnees_ini$ISO[donnees_ini$revenu != "Agrégats"]
+length(pays_interet)
+pays_interet
+donnees=donnees_ini[donnees_ini$ISO %in% pays_interet,]
+head(donnees)
+```
+
+# Importation de la carte du monde
+
+```{r}
+monde <- st_read("Donnees/monde.shp")
+head(monde)
+dim(monde)
+```
+
+Fusion des données importées à celles de la carte
+```{r}
+monde_data <- left_join(monde, donnees, by = c("ISO3" = "ISO"))
+head(monde_data)
+```
+
+# Tracé de la carte
+
+```{r}
+plot(monde_data)
+table(monde_data$region)
+plot(st_geometry(monde_data)) # la  carte seule
+plot(st_geometry(monde_data), col = as.factor(monde_data$region), border = 'grey', axes = TRUE)
+plot(st_geometry(monde_data), col = as.factor(monde_data$revenu), border = 'grey', axes = TRUE)
+```
+
+Autre plot
+```{r}
+plot(monde_data["CO2"])
+```
+
+# ACP
+```{r}
+names(donnees)
+don=donnees[,5:ncol(donnees)]
+row.names(don)=donnees$ISO
+acp=PCA(don)
+acp$eig
+```
+
+# Classification des pays sur la base des 4 premières composantes principales
+
+```{r}
+cp=acp$ind$coord[,1:4]
+hc=hclust(dist(cp),method = "ward.D")
+plot(hc, hang=-1,cex=0.5)
+classes=cutree(hc,k=3)
+```
+
+Ajout des classes dans la carte monde. 
+```{r}
+cl3=data.frame(ISO=names(classes),classe=classes)
+monde3 <- left_join(monde, cl3, by = c("ISO3" = "ISO"))
+```
+
+# Tracé de la carte avec les numéros de classe
+
+```{r}
+plot(monde3["classe"])
+```
+
+# Avec leaflet
+
+```{r}
+color_palette <- colorFactor(palette = c("red", "yellow", "green"), levels = unique(monde3$classe))
+pal <- colorNumeric(  palette = c("red", "yellow", "green"),domain = monde3$classe)
+leaflet(monde3) %>%
+      addProviderTiles("OpenStreetMap.Mapnik") %>%
+      addPolygons(data=monde3,weight = 2, color= ~pal(classe),fillOpacity=0.35 ) %>%
+      addLegend("bottomright", pal = color_palette, values = ~classe, title = "Classe de Valeur")
+```
+

@@ -1,4 +1,4 @@
-# Classification de commentaires de films en NLP
+# Analyser les enjeux liés au changement climatique à l’échelle internationale
 
 ![Statistiques](https://img.shields.io/badge/Analyse-temporelle-blue)
 ![Status](https://img.shields.io/badge/Status-Ternimer-red)
@@ -56,11 +56,3 @@ SAS (si utilisé dans le projet)
 R Shiny pour la dataviz
 
 Git / GitHub pour la gestion du code
-
-Traitement de données massives & flux (selon les sources)
-
-📁 Structure du dépôt
-├── data/                 # Sources, datasets nettoyés
-├── scripts/              # Scripts d’analyse et de modélisation
-├── reports/              # Rapports 1, 2 et final
-└── README.md             # Description du projet

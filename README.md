@@ -1,4 +1,5 @@
-✅ Description complète pour GitHub
+
+
 📌 Présentation du projet
 Ce projet vise à analyser les enjeux liés au changement climatique à l’échelle internationale. Il s’inscrit dans le cadre de la SAÉ “Modélisation statistique pour les données complexes et le Big Data” du BUT Science des Données.
 L’objectif central est de comprendre, comparer et modéliser les capacités d’adaptation des pays face à l'évolution des indicateurs climatiques, socio-économiques et démographiques.

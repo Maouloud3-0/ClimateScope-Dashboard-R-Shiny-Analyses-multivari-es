@@ -1,4 +1,8 @@
+# Classification de commentaires de films en NLP
 
+![Statistiques](https://img.shields.io/badge/Analyse-temporelle-blue)
+![Status](https://img.shields.io/badge/Status-Ternimer-red)
+![License](https://img.shields.io/badge/License-MIT-green)
 
 📌 Présentation du projet
 Ce projet vise à analyser les enjeux liés au changement climatique à l’échelle internationale. Il s’inscrit dans le cadre de la SAÉ “Modélisation statistique pour les données complexes et le Big Data” du BUT Science des Données.
